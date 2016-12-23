@@ -107,7 +107,7 @@ func (c *TeamAPI) RemoveUser(accountID, emailAddress *string) (*Team, error) {
 	}{
 		AccountID:    accountID,
 		EmailAddress: emailAddress,
-	}, team);  err != nil {
+	}, team); err != nil {
 		return nil, err
 	}
 	return &team.Team, nil
