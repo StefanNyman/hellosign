@@ -26,69 +26,49 @@ type Acc struct {
 	RoleCode *string `json:"role_code"`
 }
 
-type hsAccountRaw struct {
+type accRaw struct {
 	Account Acc `json:"account"`
 }
 
 func (c *AccountAPI) Get() (*Acc, error) {
-	resp, err := c.get("account", nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	acc := &hsAccountRaw{}
-	if err := c.parseResponse(resp, acc); err != nil {
+	acc := &accRaw{}
+	if err := c.getAndParse("account", nil, acc); err != nil {
 		return nil, err
 	}
 	return &acc.Account, nil
 }
 
 func (c *AccountAPI) Update(callbackURL string) (*Acc, error) {
-	resp, err := c.postForm("account", &struct {
+	acc := &accRaw{}
+	if err := c.postFormAndParse("account", &struct {
 		CallbackURL string `form:"callback_url"`
 	}{
 		CallbackURL: callbackURL,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	acc := &hsAccountRaw{}
-	if err := c.parseResponse(resp, acc); err != nil {
+	}, acc); err != nil {
 		return nil, err
 	}
 	return &acc.Account, nil
 }
 
 func (c *AccountAPI) Create(emailAddress string) (*Acc, error) {
-	resp, err := c.postForm("account/create", &struct {
+	acc := &accRaw{}
+	if err := c.postFormAndParse("account/create", &struct {
 		EmailAddress string `form:"email_address"`
 	}{
 		EmailAddress: emailAddress,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	acc := &hsAccountRaw{}
-	if err := c.parseResponse(resp, acc); err != nil {
+	}, acc); err != nil {
 		return nil, err
 	}
 	return &acc.Account, nil
 }
 
 func (c *AccountAPI) Verify(emailAddress string) (*Acc, error) {
-	resp, err := c.postForm("account/verify", &struct {
+	acc := &accRaw{}
+	if err := c.postFormAndParse("account/verify", &struct {
 		EmailAddress string `form:"email_address"`
 	}{
 		EmailAddress: emailAddress,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	acc := &hsAccountRaw{}
-	if err := c.parseResponse(resp, acc); err != nil {
+	}, acc); err != nil {
 		return nil, err
 	}
 	return &acc.Account, nil

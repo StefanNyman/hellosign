@@ -59,13 +59,8 @@ type sigReqRaw struct {
 }
 
 func (c *SignatureRequestAPI) Get(signatureRequestID string) (*SigReq, error) {
-	resp, err := c.get(fmt.Sprintf("signature_request/%s", signatureRequestID), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	sigReq := &sigReqRaw{}
-	if err := c.parseResponse(resp, sigReq); err != nil {
+	if err := c.getAndParse(fmt.Sprintf("signature_request/%s", signatureRequestID), nil, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil
@@ -93,13 +88,8 @@ func (c *SignatureRequestAPI) List(parms SigReqLstParms) (*SigReqLst, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.get("signature_request/list", &paramString)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	lst := &SigReqLst{}
-	if err := c.parseResponse(resp, lst); err != nil {
+	if err := c.getAndParse("signature_request/list", &paramString, lst); err != nil {
 		return nil, err
 	}
 	return lst, nil
@@ -137,13 +127,8 @@ func (c *SignatureRequestAPI) Send(parms SigReqSendParms) (*SigReq, error) {
 	if len(parms.File) > 0 && len(parms.FileUrl) > 0 {
 		return nil, errors.New("Specify either file or file url, both given")
 	}
-	resp, err := c.postForm("signature_request/send", &parms)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	sigReq := &sigReqRaw{}
-	if err := c.parseResponse(resp, sigReq); err != nil {
+	if err := c.postFormAndParse("signature_request/send", &parms, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil
@@ -182,51 +167,36 @@ func (c *SignatureRequestAPI) SendWithTemplate(parms SigReqSendTplParms) (*SigRe
 	if parms.TemplateId != "" && len(parms.TemplateIds) > 0 {
 		return nil, errors.New("Specify either template id or template ids, both given")
 	}
-	resp, err := c.postForm("signature_request/send_with_template", &parms)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	sigReq := &sigReqRaw{}
-	if err := c.parseResponse(resp, sigReq); err != nil {
+	if err := c.postFormAndParse("signature_request/send_with_template", &parms, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil
 }
 
 func (c *SignatureRequestAPI) SendReminder(signatureRequestID, emailAddress string, name *string) (*SigReq, error) {
-	resp, err := c.postForm(fmt.Sprintf("signature_request/remind/%s", signatureRequestID), &struct {
+	sigReq := &sigReqRaw{}
+	if err := c.postFormAndParse(fmt.Sprintf("signature_request/remind/%s", signatureRequestID), &struct {
 		EmailAddress string  `form:"email_address"`
 		Name         *string `form:"name,omitempty"`
 	}{
 		EmailAddress: emailAddress,
 		Name:         name,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	sigReq := &sigReqRaw{}
-	if err := c.parseResponse(resp, sigReq); err != nil {
+	}, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil
 }
 
 func (c *SignatureRequestAPI) Update(signatureRequestID, signatureId, email string) (*SigReq, error) {
-	resp, err := c.postForm(fmt.Sprintf("signature_request/update/%s", signatureRequestID), &struct {
+	sigReq := &sigReqRaw{}
+	if err := c.postFormAndParse(fmt.Sprintf("signature_request/update/%s", signatureRequestID), &struct {
 		SignatureId  string `form:"signature_id"`
 		EmailAddress string `form:"email_address"`
 	}{
 		SignatureId:  signatureId,
 		EmailAddress: email,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	sigReq := &sigReqRaw{}
-	if err := c.parseResponse(resp, sigReq); err != nil {
+	}, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil
@@ -284,13 +254,8 @@ func (c *SignatureRequestAPI) SendEmbedded(parms SigReqEmbSendParms) (*SigReq, e
 	if len(parms.File) > 0 && len(parms.FileUrl) > 0 {
 		return nil, errors.New("Specify either file or file url, both given")
 	}
-	resp, err := c.postForm("signature_request/create_embedded", &parms)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	sigReq := &sigReqRaw{}
-	if err := c.parseResponse(resp, sigReq); err != nil {
+	if err := c.postFormAndParse("signature_request/create_embedded", &parms, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil

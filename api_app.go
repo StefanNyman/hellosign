@@ -41,13 +41,8 @@ type apiAppRaw struct {
 }
 
 func (c *APIAppAPI) Get(clientID string) (*APIApp, error) {
-	resp, err := c.get(fmt.Sprintf("api_app/%s", clientID), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	app := &apiAppRaw{}
-	if err := c.parseResponse(resp, app); err != nil {
+	if err := c.getAndParse(fmt.Sprintf("api_app/%s", clientID), nil, app); err != nil {
 		return nil, err
 	}
 	return &app.APIApp, nil
@@ -75,13 +70,8 @@ func (c *APIAppAPI) List(parms APIAppLstParms) (*APIAppLst, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.get("api_app/list", &paramString)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	lst := &APIAppLst{}
-	if err := c.parseResponse(resp, lst); err != nil {
+	if err := c.getAndParse("api_app/list", &paramString, lst); err != nil {
 		return nil, err
 	}
 	return lst, nil
@@ -102,13 +92,8 @@ type APIAppCreateOauth struct {
 }
 
 func (c *APIAppAPI) Create(parms APIAppCreateParms) (*APIApp, error) {
-	resp, err := c.postForm("api_app", &parms)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	app := &apiAppRaw{}
-	if err := c.parseResponse(resp, app); err != nil {
+	if err := c.postFormAndParse("api_app", &parms, app); err != nil {
 		return nil, err
 	}
 	return &app.APIApp, nil

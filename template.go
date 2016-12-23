@@ -60,13 +60,8 @@ type tplRaw struct {
 }
 
 func (c *TemplateAPI) Get(templateID string) (*Tpl, error) {
-	resp, err := c.get(fmt.Sprintf("template/%s", templateID), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	tpl := &tplRaw{}
-	if err := c.parseResponse(resp, tpl); err != nil {
+	if err := c.getAndParse(fmt.Sprintf("template/%s", templateID), nil, tpl); err != nil {
 		return nil, err
 	}
 	return &tpl.Template, nil
@@ -94,13 +89,8 @@ func (c *TemplateAPI) List(parms TplLstParms) (*TplLst, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.get("template/list", &paramString)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	lst := &TplLst{}
-	if err := c.parseResponse(resp, lst); err != nil {
+	if err := c.getAndParse("template/list", &paramString, lst); err != nil {
 		return nil, err
 	}
 	return lst, nil
@@ -110,19 +100,14 @@ func (c *TemplateAPI) AddUser(templateID string, accountID, emailAddress *string
 	if accountID != nil && emailAddress != nil {
 		return nil, errors.New("Specify either account id or email address, both given")
 	}
-	resp, err := c.postForm(fmt.Sprintf("template/add_user/%s", templateID), &struct {
+	tpl := &tplRaw{}
+	if err := c.postFormAndParse(fmt.Sprintf("template/add_user/%s", templateID), &struct {
 		AccountID    *string `form:"account_id,omitempty"`
 		EmailAddress *string `form:"email_address,omitempty"`
 	}{
 		AccountID:    accountID,
 		EmailAddress: emailAddress,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	tpl := &tplRaw{}
-	if err := c.parseResponse(resp, tpl); err != nil {
+	}, tpl); err != nil {
 		return nil, err
 	}
 	return &tpl.Template, nil
@@ -132,19 +117,14 @@ func (c *TemplateAPI) RemoveUser(templateID string, accountID, emailAddress *str
 	if accountID != nil && emailAddress != nil {
 		return nil, errors.New("Specify either account id or email address, both given")
 	}
-	resp, err := c.postForm(fmt.Sprintf("template/remove_user/%s", templateID), &struct {
+	tpl := &tplRaw{}
+	if err := c.postFormAndParse(fmt.Sprintf("template/remove_user/%s", templateID), &struct {
 		AccountID    *string `form:"account_id,omitempty"`
 		EmailAddress *string `form:"email_address,omitempty"`
 	}{
 		AccountID:    accountID,
 		EmailAddress: emailAddress,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	tpl := &tplRaw{}
-	if err := c.parseResponse(resp, tpl); err != nil {
+	}, tpl); err != nil {
 		return nil, err
 	}
 	return &tpl.Template, nil
@@ -197,13 +177,8 @@ func (c *TemplateAPI) CreateEmbeddedDraft(parms TplEmbCreateParms) (*Tpl, error)
 	if len(parms.File) > 0 && len(parms.FileUrl) > 0 {
 		return nil, errors.New("Specify either file or file url, both given")
 	}
-	resp, err := c.postForm("template/create_embedded_draft", parms)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	tpl := &tplRaw{}
-	if err := c.parseResponse(resp, tpl); err != nil {
+	if err := c.postFormAndParse("template/create_embedded_draft", parms, tpl); err != nil {
 		return nil, err
 	}
 	return &tpl.Template, nil

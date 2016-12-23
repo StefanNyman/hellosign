@@ -20,26 +20,16 @@ type EmbeddedURL struct {
 }
 
 func (c *EmbeddedAPI) GetSignURL(signatureID string) (*EmbeddedURL, error) {
-	resp, err := c.get(fmt.Sprintf("embedded/sign_url/%s", signatureID), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	url := &EmbeddedURL{}
-	if err := c.parseResponse(resp, url); err != nil {
+	if err := c.getAndParse(fmt.Sprintf("embedded/sign_url/%s", signatureID), nil, url); err != nil {
 		return nil, err
 	}
 	return url, nil
 }
 
 func (c *EmbeddedAPI) GetTemplateEditURL(templateID string) (*EmbeddedURL, error) {
-	resp, err := c.get(fmt.Sprintf("embedded/edit_url/%s", templateID), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	url := &EmbeddedURL{}
-	if err := c.parseResponse(resp, url); err != nil {
+	if err := c.getAndParse(fmt.Sprintf("embedded/edit_url/%s", templateID), nil, url); err != nil {
 		return nil, err
 	}
 	return url, nil
