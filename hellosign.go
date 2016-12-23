@@ -101,6 +101,15 @@ func (c *hellosign) postForm(ept string, o interface{}) (*http.Response, error) 
 	return c.perform(req)
 }
 
+func (c *hellosign) postFormAndParse(ept string, inp, dst interface{}) error {
+	resp, err := c.postForm(ept, inp)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return c.parseResponse(resp, dst)
+}
+
 func (c *hellosign) getEptUrl(ept string) string {
 	return fmt.Sprintf("%s/%s", c.baseURL, ept)
 }
@@ -117,6 +126,15 @@ func (c *hellosign) get(ept string, params *string) (*http.Response, error) {
 
 	resp, err := c.perform(req)
 	return resp, err
+}
+
+func (c *hellosign) getAndParse(ept string, params *string, dst interface{}) error {
+	resp, err := c.get(ept, params)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return c.parseResponse(resp, dst)
 }
 
 func (c *hellosign) getFiles(ept, fileType string, getURL bool) (*[]byte, *FileURL, error) {
