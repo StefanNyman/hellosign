@@ -5,9 +5,11 @@
 package hellosign
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ajg/form"
+	"net/http"
 )
 
 type APIAppAPI struct {
@@ -97,4 +99,37 @@ func (c *APIAppAPI) Create(parms APIAppCreateParms) (*APIApp, error) {
 		return nil, err
 	}
 	return &app.APIApp, nil
+}
+
+type APIAppUpdateParms struct {
+	Name                 string              `form:"name,omitempty"`
+	Domain               string              `form:"domain,omitempty"`
+	CallbackURL          string              `form:"callback_url,omitempty"`
+	CustomLogoFile       []byte              `form:"custom_logo_file,omitempty"`
+	OAuth                []APIAppUpdateOauth `form:"oauth,omitempty"`
+	WhiteLabelingOptions string              `form:"white_labeling_options,omitempty"`
+}
+
+type APIAppUpdateOauth struct {
+	CallbackURL string   `form:"callback_url,omitempty"`
+	Scopes      []string `form:"scopes,omitempty"`
+}
+
+func (c *APIAppAPI) Update(clientID string, parms APIAppUpdateParms) (*APIApp, error) {
+	app := &apiAppRaw{}
+	if err := c.postFormAndParse(fmt.Sprintf("api_app/%s", clientID), &parms, app); err != nil {
+		return nil, err
+	}
+	return &app.APIApp, nil
+}
+
+func (c *APIAppAPI) Delete(clientID string) (bool, error) {
+	resp, err := c.delete(fmt.Sprintf("api_app/%s", clientID))
+	if err != nil {
+		return false, err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return false, errors.New(resp.Status)
+	}
+	return true, nil
 }
