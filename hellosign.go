@@ -110,6 +110,14 @@ func (c *hellosign) postFormAndParse(ept string, inp, dst interface{}) error {
 	return c.parseResponse(resp, dst)
 }
 
+func (c *hellosign) delete(ept string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodDelete, c.getEptUrl(ept), nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.perform(req)
+}
+
 func (c *hellosign) getEptUrl(ept string) string {
 	return fmt.Sprintf("%s/%s", c.baseURL, ept)
 }
@@ -123,7 +131,6 @@ func (c *hellosign) get(ept string, params *string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	resp, err := c.perform(req)
 	return resp, err
 }
