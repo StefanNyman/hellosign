@@ -17,18 +17,16 @@ func NewTeamAPI(apiKey string) *TeamAPI {
 	return &TeamAPI{newHellosign(apiKey)}
 }
 
+type TeamAcc struct {
+	AccountID    string `json:"account_id"`
+	EmailAddress string `json:"email_address"`
+	RoleCode     string `json:"role_code"`
+}
+
 type Team struct {
-	Name     string `json:"name"`
-	Accounts []struct {
-		AccountID    string `json:"account_id"`
-		EmailAddress string `json:"email_address"`
-		RoleCode     string `json:"role_code"`
-	} `json:"accounts"`
-	InvitedAccounts []struct {
-		AccountID    string `json:"account_id"`
-		EmailAddress string `json:"email_address"`
-		RoleCode     string `json:"role_code"`
-	} `json:"invited_accounts"`
+	Name            string    `json:"name"`
+	Accounts        []TeamAcc `json:"accounts"`
+	InvitedAccounts []TeamAcc `json:"invited_accounts"`
 }
 
 type teamRaw struct {
@@ -79,15 +77,17 @@ func (c *TeamAPI) Delete() (bool, error) {
 	return true, nil
 }
 
+type teamPostArgs struct {
+	AccountID    *string `form:"account_id,omitempty"`
+	EmailAddress *string `form:"email_address,omitempty"`
+}
+
 func (c *TeamAPI) AddUser(accountID, emailAddress *string) (*Team, error) {
 	if accountID != nil && emailAddress != nil {
 		return nil, errors.New("Specify either account id or email address, both given")
 	}
 	team := &teamRaw{}
-	if err := c.postFormAndParse("team/add_member", &struct {
-		AccountID    *string `form:"account_id,omitempty"`
-		EmailAddress *string `form:"email_address,omitempty"`
-	}{
+	if err := c.postFormAndParse("team/add_member", &teamPostArgs{
 		AccountID:    accountID,
 		EmailAddress: emailAddress,
 	}, team); err != nil {
@@ -101,10 +101,7 @@ func (c *TeamAPI) RemoveUser(accountID, emailAddress *string) (*Team, error) {
 		return nil, errors.New("Specify either account id or email address, both given")
 	}
 	team := &teamRaw{}
-	if err := c.postFormAndParse("team/remove_member", &struct {
-		AccountID    *string `form:"account_id,omitempty"`
-		EmailAddress *string `form:"email_address,omitempty"`
-	}{
+	if err := c.postFormAndParse("team/remove_member", &teamPostArgs{
 		AccountID:    accountID,
 		EmailAddress: emailAddress,
 	}, team); err != nil {

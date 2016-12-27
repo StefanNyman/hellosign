@@ -69,23 +69,11 @@ func (c *SignatureRequestAPI) Get(signatureRequestID string) (*SigReq, error) {
 }
 
 type SigReqLst struct {
-	ListInfo struct {
-		Page       uint64 `json:"page"`
-		NumPages   uint64 `json:"num_pages"`
-		NumResults uint64 `json:"num_results"`
-		PageSize   uint64 `json:"page_size"`
-	} `json:"list_info"`
+	ListInfo          ListInfo `json:"list_info"`
 	SignatureRequests []SigReq `json:"signature_requests"`
 }
 
-type SigReqLstParms struct {
-	AccountId *string `form:"account_id,omitempty"`
-	Page      *uint64 `form:"page,omitempty"`
-	PageSize  *uint64 `form:"page_size,omitempty"`
-	Query     *string `form:"query,omitempty"`
-}
-
-func (c *SignatureRequestAPI) List(parms SigReqLstParms) (*SigReqLst, error) {
+func (c *SignatureRequestAPI) List(parms ListParms) (*SigReqLst, error) {
 	paramString, err := form.EncodeToString(parms)
 	if err != nil {
 		return nil, err

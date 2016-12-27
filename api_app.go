@@ -8,8 +8,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ajg/form"
 	"net/http"
+
+	"github.com/ajg/form"
 )
 
 type APIAppAPI struct {
@@ -51,23 +52,11 @@ func (c *APIAppAPI) Get(clientID string) (*APIApp, error) {
 }
 
 type APIAppLst struct {
-	ListInfo struct {
-		Page       uint64 `json:"page"`
-		NumPages   uint64 `json:"num_pages"`
-		NumResults uint64 `json:"num_results"`
-		PageSize   uint64 `json:"page_size"`
-	} `json:"list_info"`
-	APIApps []APIApp `json:"api_apps"`
+	ListInfo ListInfo `json:"list_info"`
+	APIApps  []APIApp `json:"api_apps"`
 }
 
-type APIAppLstParms struct {
-	AccountId *string `form:"account_id,omitempty"`
-	Page      *uint64 `form:"page,omitempty"`
-	PageSize  *uint64 `form:"page_size,omitempty"`
-	Query     *string `form:"query,omitempty"`
-}
-
-func (c *APIAppAPI) List(parms APIAppLstParms) (*APIAppLst, error) {
+func (c *APIAppAPI) List(parms ListParms) (*APIAppLst, error) {
 	paramString, err := form.EncodeToString(parms)
 	if err != nil {
 		return nil, err

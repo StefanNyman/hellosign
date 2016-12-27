@@ -26,6 +26,31 @@ const (
 	xRateLimitReset                 = "x-Ratelimit-Reset"
 )
 
+type ListInfo struct {
+	Page       uint64 `json:"page"`
+	NumPages   uint64 `json:"num_pages"`
+	NumResults uint64 `json:"num_results"`
+	PageSize   uint64 `json:"page_size"`
+}
+
+type ListParms struct {
+	AccountId *string `form:"account_id,omitempty"`
+	Page      *uint64 `form:"page,omitempty"`
+	PageSize  *uint64 `form:"page_size,omitempty"`
+	Query     *string `form:"query,omitempty"`
+}
+
+type FormField struct {
+	ApiID    string `json:"api_id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	X        uint64 `json:"x"`
+	Y        uint64 `json:"y"`
+	Width    uint64 `json:"width"`
+	Height   uint64 `json:"height"`
+	Required bool   `json:"required"`
+}
+
 type hellosign struct {
 	apiKey             string
 	baseURL            string

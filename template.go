@@ -32,18 +32,9 @@ type Tpl struct {
 		Name string `json:"name"`
 	}
 	Documents []struct {
-		Index      uint64 `json:"index"`
-		Name       string `json:"name"`
-		FormFields []struct {
-			ApiID    string `json:"api_id"`
-			Name     string `json:"name"`
-			Type     string `json:"type"`
-			X        uint64 `json:"x"`
-			Y        uint64 `json:"y"`
-			Width    uint64 `json:"width"`
-			Height   uint64 `json:"height"`
-			Required bool   `json:"required"`
-		} `json:"form_fields"`
+		Index        uint64      `json:"index"`
+		Name         string      `json:"name"`
+		FormFields   []FormField `json:"form_fields"`
 		CustomFields []struct {
 			Name string `json:"name"`
 			Type string `json:"type"`
@@ -68,23 +59,11 @@ func (c *TemplateAPI) Get(templateID string) (*Tpl, error) {
 }
 
 type TplLst struct {
-	ListInfo struct {
-		Page       uint64 `json:"page"`
-		NumPages   uint64 `json:"num_pages"`
-		NumResults uint64 `json:"num_results"`
-		PageSize   uint64 `json:"page_size"`
-	} `json:"list_info"`
-	Templates []Tpl `json:"templates"`
+	ListInfo  ListInfo `json:"list_info"`
+	Templates []Tpl    `json:"templates"`
 }
 
-type TplLstParms struct {
-	AccountId *string `form:"account_id,omitempty"`
-	Page      *uint64 `form:"page,omitempty"`
-	PageSize  *uint64 `form:"page_size,omitempty"`
-	Query     *string `form:"query,omitempty"`
-}
-
-func (c *TemplateAPI) List(parms TplLstParms) (*TplLst, error) {
+func (c *TemplateAPI) List(parms ListParms) (*TplLst, error) {
 	paramString, err := form.EncodeToString(parms)
 	if err != nil {
 		return nil, err
@@ -96,15 +75,17 @@ func (c *TemplateAPI) List(parms TplLstParms) (*TplLst, error) {
 	return lst, nil
 }
 
+type tplAddRemParms struct {
+	AccountID    *string `form:"account_id,omitempty"`
+	EmailAddress *string `form:"email_address,omitempty"`
+}
+
 func (c *TemplateAPI) AddUser(templateID string, accountID, emailAddress *string) (*Tpl, error) {
 	if accountID != nil && emailAddress != nil {
 		return nil, errors.New("Specify either account id or email address, both given")
 	}
 	tpl := &tplRaw{}
-	if err := c.postFormAndParse(fmt.Sprintf("template/add_user/%s", templateID), &struct {
-		AccountID    *string `form:"account_id,omitempty"`
-		EmailAddress *string `form:"email_address,omitempty"`
-	}{
+	if err := c.postFormAndParse(fmt.Sprintf("template/add_user/%s", templateID), &tplAddRemParms{
 		AccountID:    accountID,
 		EmailAddress: emailAddress,
 	}, tpl); err != nil {
@@ -118,10 +99,7 @@ func (c *TemplateAPI) RemoveUser(templateID string, accountID, emailAddress *str
 		return nil, errors.New("Specify either account id or email address, both given")
 	}
 	tpl := &tplRaw{}
-	if err := c.postFormAndParse(fmt.Sprintf("template/remove_user/%s", templateID), &struct {
-		AccountID    *string `form:"account_id,omitempty"`
-		EmailAddress *string `form:"email_address,omitempty"`
-	}{
+	if err := c.postFormAndParse(fmt.Sprintf("template/remove_user/%s", templateID), &tplAddRemParms{
 		AccountID:    accountID,
 		EmailAddress: emailAddress,
 	}, tpl); err != nil {

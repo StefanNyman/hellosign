@@ -11,3 +11,4 @@ type UnclaimedDraftAPI struct {
 func NewUnclaimedDraftAPI(apiKey string) *UnclaimedDraftAPI {
 	return &UnclaimedDraftAPI{newHellosign(apiKey)}
 }
+
