@@ -144,9 +144,9 @@ func (c *hellosign) getAndParse(ept string, params *string, dst interface{}) err
 	return c.parseResponse(resp, dst)
 }
 
-func (c *hellosign) getFiles(ept, fileType string, getURL bool) (*[]byte, *FileURL, error) {
+func (c *hellosign) getFiles(ept, fileType string, getURL bool) ([]byte, *FileURL, error) {
 	if fileType != "" && fileType != "pdf" && fileType != "zip" {
-		return nil, nil, errors.New("Invalid file type specified, pdf or zip")
+		return []byte{}, nil, errors.New("Invalid file type specified, pdf or zip")
 	}
 	parms, err := form.EncodeToString(&struct {
 		FileType string `form:"file_type,omitempty"`
@@ -156,26 +156,26 @@ func (c *hellosign) getFiles(ept, fileType string, getURL bool) (*[]byte, *FileU
 		GetUrl:   getURL,
 	})
 	if err != nil {
-		return nil, nil, err
+		return []byte{}, nil, err
 	}
 	resp, err := c.get(ept, &parms)
 	if err != nil {
-		return nil, nil, err
+		return []byte{}, nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, errors.New(resp.Status)
+		return []byte{}, nil, errors.New(resp.Status)
 	}
 	if getURL {
 		msg := &FileURL{}
 		if err := c.parseResponse(resp, msg); err != nil {
-			return nil, nil, err
+			return []byte{}, nil, err
 		}
-		return nil, msg, nil
+		return []byte{}, msg, nil
 	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, nil, err
+		return []byte{}, nil, err
 	}
-	return &b, nil, nil
+	return b, nil, nil
 }

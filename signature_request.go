@@ -7,6 +7,8 @@ package hellosign
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/ajg/form"
@@ -100,6 +102,7 @@ type SigReqSendParms struct {
 	AllowDecline          int8                    `form:"allow_decline,omitempty"`
 	File                  [][]byte                `form:"file,omitempty"`
 	FileUrl               []string                `form:"file_url,omitempty"`
+	FileIO                []io.Reader             `form:"-"`
 	Title                 string                  `form:"title,omitempty"`
 	Subject               string                  `form:"subject,omitempty"`
 	Message               string                  `form:"message,omitempty"`
@@ -126,6 +129,21 @@ func (c *SignatureRequestAPI) Send(parms SigReqSendParms) (*SigReq, error) {
 	}
 	if len(parms.File) > 0 && len(parms.FileUrl) > 0 {
 		return nil, errors.New("Specify either file or file url, both given")
+	}
+	if len(parms.File) > 0 && len(parms.FileIO) > 0 {
+		return nil, errors.New("Specify either file or file io, both given")
+	}
+	if len(parms.FileIO) > 0 && len(parms.FileUrl) > 0 {
+		return nil, errors.New("Specify either file io or file url, both given")
+	}
+	if len(parms.FileIO) > 0 {
+		for _, f := range parms.FileIO {
+			fc, err := ioutil.ReadAll(f)
+			if err != nil {
+				return nil, err
+			}
+			parms.File = append(parms.File, fc)
+		}
 	}
 	sigReq := &sigReqRaw{}
 	if err := c.postFormAndParse("signature_request/send", &parms, sigReq); err != nil {
@@ -219,7 +237,7 @@ type FileURL struct {
 	ExpiresAt uint64 `json:"expires_at"`
 }
 
-func (c *SignatureRequestAPI) Files(signatureRequestID, fileType string, getURL bool) (*[]byte, *FileURL, error) {
+func (c *SignatureRequestAPI) Files(signatureRequestID, fileType string, getURL bool) ([]byte, *FileURL, error) {
 	return c.getFiles(fmt.Sprintf("signature_request/files/%", signatureRequestID), fileType, getURL)
 }
 
@@ -228,6 +246,7 @@ type SigReqEmbSendParms struct {
 	AllowDecline          int8                       `form:"allow_decline,omitempty"`
 	ClientId              string                     `form:"client_id"`
 	File                  [][]byte                   `form:"file,omitempty"`
+	FileIO                []io.Reader                `form:"-"`
 	FileUrl               []string                   `form:"file_url,omitempty"`
 	Title                 string                     `form:"title,omitempty"`
 	Subject               string                     `form:"subject,omitempty"`
@@ -248,11 +267,26 @@ type SigReqEmbSendParmsSigner struct {
 }
 
 func (c *SignatureRequestAPI) SendEmbedded(parms SigReqEmbSendParms) (*SigReq, error) {
-	if len(parms.File) == 0 && len(parms.FileUrl) == 0 {
-		return nil, errors.New("Specify either file or file url, none given")
+	if len(parms.File) == 0 && len(parms.FileUrl) == 0 && len(parms.FileIO) == 0 {
+		return nil, errors.New("Specify either file, file io or file url, none given")
 	}
 	if len(parms.File) > 0 && len(parms.FileUrl) > 0 {
 		return nil, errors.New("Specify either file or file url, both given")
+	}
+	if len(parms.File) > 0 && len(parms.FileIO) > 0 {
+		return nil, errors.New("Specify either file or file io, both given")
+	}
+	if len(parms.FileIO) > 0 && len(parms.FileUrl) > 0 {
+		return nil, errors.New("Specify either file io or file url, both given")
+	}
+	if len(parms.FileIO) > 0 {
+		for _, f := range parms.FileIO {
+			fc, err := ioutil.ReadAll(f)
+			if err != nil {
+				return nil, err
+			}
+			parms.File = append(parms.File, fc)
+		}
 	}
 	sigReq := &sigReqRaw{}
 	if err := c.postFormAndParse("signature_request/create_embedded", &parms, sigReq); err != nil {

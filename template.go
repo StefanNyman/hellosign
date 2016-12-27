@@ -130,7 +130,7 @@ func (c *TemplateAPI) RemoveUser(templateID string, accountID, emailAddress *str
 	return &tpl.Template, nil
 }
 
-func (c *TemplateAPI) Files(templateID, fileType string, getURL bool) (*[]byte, *FileURL, error) {
+func (c *TemplateAPI) Files(templateID, fileType string, getURL bool) ([]byte, *FileURL, error) {
 	return c.getFiles(fmt.Sprintf("template/files/%s", templateID), fileType, getURL)
 }
 
