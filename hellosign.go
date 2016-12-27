@@ -51,6 +51,32 @@ type FormField struct {
 	Required bool   `json:"required"`
 }
 
+type APIErr struct {
+	Code    int // HTTP response code
+	Message string
+	Name    string
+}
+
+type APIWarn struct {
+	Code     int // HTTP response code
+	Warnings []struct {
+		Message string
+		Name    string
+	}
+}
+
+func (a APIErr) Error() string {
+	return fmt.Sprintf("%s: %s", a.Name, a.Message)
+}
+
+func (a APIWarn) Error() string {
+	outMsg := ""
+	for _, w := range a.Warnings {
+		outMsg += fmt.Sprintf("%s: %s\n", w.Name, w.Message)
+	}
+	return outMsg
+}
+
 type hellosign struct {
 	apiKey             string
 	baseURL            string
@@ -78,6 +104,13 @@ func (c *hellosign) perform(req *http.Request) (*http.Response, error) {
 		fmt.Println(string(d))
 	}
 	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	c.LastStatusCode = resp.StatusCode
+	if resp.StatusCode >= 400 {
+		return nil, c.parseResponseError(resp)
+	}
 	for _, hk := range []string{xRatelimitLimit, xRatelimitLimitRemaining, xRateLimitReset} {
 		hv := resp.Header.Get(hk)
 		if hv == "" {
@@ -96,8 +129,55 @@ func (c *hellosign) perform(req *http.Request) (*http.Response, error) {
 			c.RateLimitReset = hvui
 		}
 	}
-	c.LastStatusCode = resp.StatusCode
 	return resp, err
+}
+
+func (c *hellosign) parseResponseError(resp *http.Response) error {
+	e := &struct {
+		Err struct {
+			Msg  *string `json:"error_msg"`
+			Name *string `json:"error_name"`
+		} `json:"error"`
+	}{}
+	w := &struct {
+		Warnings []struct {
+			Msg  *string `json:"warning_msg"`
+			Name *string `json:"warning_name"`
+		} `json:"warnings"`
+	}{}
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(b, e)
+	if err != nil {
+		return err
+	}
+	if e.Err.Name != nil {
+		return APIErr{Code: resp.StatusCode, Message: *e.Err.Msg, Name: *e.Err.Name}
+	}
+	err = json.Unmarshal(b, w)
+	if err != nil {
+		return err
+	}
+	if len(w.Warnings) == 0 {
+		return errors.New("Could not parse response error or warning")
+	}
+	retErr := APIWarn{}
+	warns := []struct {
+		Name    string
+		Message string
+	}{}
+	for _, w := range w.Warnings {
+		warns = append(warns, struct {
+			Name    string
+			Message string
+		}{
+			Name:    *w.Name,
+			Message: *w.Msg,
+		})
+	}
+	return retErr
 }
 
 func (c *hellosign) parseResponse(resp *http.Response, dst interface{}) error {
