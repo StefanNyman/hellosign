@@ -8,12 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"strconv"
 	"strings"
-
-	"io/ioutil"
 
 	"github.com/ajg/form"
 )
@@ -79,8 +77,6 @@ func (a APIWarn) Error() string {
 
 type hellosign struct {
 	apiKey             string
-	baseURL            string
-	httpClient         *http.Client
 	RateLimit          uint64 // Number of requests allowed per hour
 	RateLimitRemaining uint64 // Remaining number of requests this hour
 	RateLimitReset     uint64 // When the limit will be reset. In seconds from epoch
@@ -90,20 +86,14 @@ type hellosign struct {
 // Initializes a new Hellosign API client.
 func newHellosign(apiKey string) *hellosign {
 	return &hellosign{
-		apiKey:     apiKey,
-		baseURL:    baseURL,
-		httpClient: &http.Client{},
+		apiKey: apiKey,
 	}
 }
 
 func (c *hellosign) perform(req *http.Request) (*http.Response, error) {
 	req.Header.Add("accept", "application/json")
 	req.SetBasicAuth(c.apiKey, "")
-	d, err := httputil.DumpRequest(req, true)
-	if err == nil {
-		fmt.Println(string(d))
-	}
-	resp, err := c.httpClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -223,8 +213,12 @@ func (c *hellosign) delete(ept string) (*http.Response, error) {
 	return c.perform(req)
 }
 
+func GetEptURL(ept string) string {
+	return fmt.Sprintf("%s/%s", baseURL, ept)
+}
+
 func (c *hellosign) getEptUrl(ept string) string {
-	return fmt.Sprintf("%s/%s", c.baseURL, ept)
+	return GetEptURL(ept)
 }
 
 func (c *hellosign) get(ept string, params *string) (*http.Response, error) {
