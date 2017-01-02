@@ -24,6 +24,7 @@ const (
 	xRateLimitReset                 = "x-Ratelimit-Reset"
 )
 
+// ListInfo struct with properties for all list epts.
 type ListInfo struct {
 	Page       uint64 `json:"page"`
 	NumPages   uint64 `json:"num_pages"`
@@ -31,15 +32,17 @@ type ListInfo struct {
 	PageSize   uint64 `json:"page_size"`
 }
 
+// ListParms struct with options for performing list operations.
 type ListParms struct {
-	AccountId *string `form:"account_id,omitempty"`
+	AccountID *string `form:"account_id,omitempty"`
 	Page      *uint64 `form:"page,omitempty"`
 	PageSize  *uint64 `form:"page_size,omitempty"`
 	Query     *string `form:"query,omitempty"`
 }
 
+// FormField a field where some kind of action needs to be taken.
 type FormField struct {
-	ApiID    string `json:"api_id"`
+	APIID    string `json:"api_id"`
 	Name     string `json:"name"`
 	Type     string `json:"type"`
 	X        uint64 `json:"x"`
@@ -49,12 +52,14 @@ type FormField struct {
 	Required bool   `json:"required"`
 }
 
+// APIErr an error returned from the Hellosign API.
 type APIErr struct {
 	Code    int // HTTP response code
 	Message string
 	Name    string
 }
 
+// APIWarn a list of warnings returned from the HelloSign API.
 type APIWarn struct {
 	Code     int // HTTP response code
 	Warnings []struct {
@@ -188,7 +193,7 @@ func (c *hellosign) postForm(ept string, o interface{}) (*http.Response, error) 
 		}
 		v = encoded
 	}
-	req, err := http.NewRequest(http.MethodPost, c.getEptUrl(ept), strings.NewReader(v))
+	req, err := http.NewRequest(http.MethodPost, c.getEptURL(ept), strings.NewReader(v))
 	if err != nil {
 		return nil, err
 	}
@@ -196,33 +201,46 @@ func (c *hellosign) postForm(ept string, o interface{}) (*http.Response, error) 
 	return c.perform(req)
 }
 
-func (c *hellosign) postFormAndParse(ept string, inp, dst interface{}) error {
+func (c *hellosign) postFormAndParse(ept string, inp, dst interface{}) (err error) {
 	resp, err := c.postForm(ept, inp)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { err = resp.Body.Close() }()
 	return c.parseResponse(resp, dst)
 }
 
+func (c *hellosign) postEmptyExpect(ept string, expected int) (ok bool, err error) {
+	resp, err := c.postForm(ept, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { err = resp.Body.Close() }()
+	if resp.StatusCode != expected {
+		return false, errors.New(resp.Status)
+	}
+	return true, nil
+}
+
 func (c *hellosign) delete(ept string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodDelete, c.getEptUrl(ept), nil)
+	req, err := http.NewRequest(http.MethodDelete, c.getEptURL(ept), nil)
 	if err != nil {
 		return nil, err
 	}
 	return c.perform(req)
 }
 
+// GetEptURL returns the full HelloSign api url for a given endpoint.
 func GetEptURL(ept string) string {
 	return fmt.Sprintf("%s/%s", baseURL, ept)
 }
 
-func (c *hellosign) getEptUrl(ept string) string {
+func (c *hellosign) getEptURL(ept string) string {
 	return GetEptURL(ept)
 }
 
 func (c *hellosign) get(ept string, params *string) (*http.Response, error) {
-	url := c.getEptUrl(ept)
+	url := c.getEptURL(ept)
 	if params != nil && *params == "" {
 		url = fmt.Sprintf("%s?%s", url, *params)
 	}
@@ -234,25 +252,25 @@ func (c *hellosign) get(ept string, params *string) (*http.Response, error) {
 	return resp, err
 }
 
-func (c *hellosign) getAndParse(ept string, params *string, dst interface{}) error {
+func (c *hellosign) getAndParse(ept string, params *string, dst interface{}) (err error) {
 	resp, err := c.get(ept, params)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { err = resp.Body.Close() }()
 	return c.parseResponse(resp, dst)
 }
 
-func (c *hellosign) getFiles(ept, fileType string, getURL bool) ([]byte, *FileURL, error) {
+func (c *hellosign) getFiles(ept, fileType string, getURL bool) (body []byte, fileURL *FileURL, err error) {
 	if fileType != "" && fileType != "pdf" && fileType != "zip" {
 		return []byte{}, nil, errors.New("Invalid file type specified, pdf or zip")
 	}
 	parms, err := form.EncodeToString(&struct {
 		FileType string `form:"file_type,omitempty"`
-		GetUrl   bool   `form:"get_url,omitempty"`
+		GetURL   bool   `form:"get_url,omitempty"`
 	}{
 		FileType: fileType,
-		GetUrl:   getURL,
+		GetURL:   getURL,
 	})
 	if err != nil {
 		return []byte{}, nil, err
@@ -261,14 +279,14 @@ func (c *hellosign) getFiles(ept, fileType string, getURL bool) ([]byte, *FileUR
 	if err != nil {
 		return []byte{}, nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { err = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return []byte{}, nil, errors.New(resp.Status)
 	}
 	if getURL {
 		msg := &FileURL{}
-		if err := c.parseResponse(resp, msg); err != nil {
-			return []byte{}, nil, err
+		if respErr := c.parseResponse(resp, msg); respErr != nil {
+			return []byte{}, nil, respErr
 		}
 		return []byte{}, msg, nil
 	}
@@ -277,4 +295,15 @@ func (c *hellosign) getFiles(ept, fileType string, getURL bool) ([]byte, *FileUR
 		return []byte{}, nil, err
 	}
 	return b, nil, nil
+}
+
+func (c *hellosign) list(ept string, parms ListParms, out interface{}) error {
+	paramString, err := form.EncodeToString(parms)
+	if err != nil {
+		return err
+	}
+	if err := c.getAndParse(ept, &paramString, out); err != nil {
+		return err
+	}
+	return nil
 }
