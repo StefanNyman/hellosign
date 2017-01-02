@@ -73,17 +73,21 @@ var _ = Describe("Hellosign", func() {
 
 	It("sets correct client values", func() {
 		Expect(client.apiKey).To(Equal(apiKey))
+		Expect(client.LastStatusCode).To(Equal(0))
+		Expect(client.RateLimit).To(Equal(uint64(0)))
+		Expect(client.RateLimitRemaining).To(Equal(uint64(0)))
+		Expect(client.RateLimitReset).To(Equal(uint64(0)))
 	})
 
 	It("generates correct urls", func() {
-		accountURL := client.getEptUrl("account")
+		accountURL := client.getEptURL("account")
 		Expect(accountURL).To(Equal(fmt.Sprintf("%s/%s", baseURL, "account")))
 	})
 
 	It("performs a request", func() {
-		httpmock.RegisterResponder(http.MethodGet, client.getEptUrl("account"),
+		httpmock.RegisterResponder(http.MethodGet, client.getEptURL("account"),
 			httpmock.NewStringResponder(http.StatusOK, getAccountResp))
-		req, _ := http.NewRequest(http.MethodGet, client.getEptUrl("account"), nil)
+		req, _ := http.NewRequest(http.MethodGet, client.getEptURL("account"), nil)
 		resp, err := client.perform(req)
 		Expect(err).To(BeNil())
 		uname, pwd, ok := req.BasicAuth()
@@ -95,10 +99,30 @@ var _ = Describe("Hellosign", func() {
 		Expect(stringsNonWhitespaceEqual(getAccountResp, string(b))).To(BeTrue())
 	})
 
+	It("parses response headers", func() {
+		httpmock.RegisterResponder(http.MethodGet, client.getEptURL("account"),
+			func(req *http.Request) (*http.Response, error) {
+				resp := &http.Response{
+					Status:     "200 OK",
+					StatusCode: 200,
+					Header:     http.Header{},
+				}
+				resp.Header.Add(xRatelimitLimit, "3000")
+				resp.Header.Add(xRatelimitLimitRemaining, "2999")
+				resp.Header.Add(xRateLimitReset, "1")
+				return resp, nil
+			})
+		_, err := client.get("account", nil)
+		Expect(err).To(BeNil())
+		Expect(client.RateLimit).To(Equal(uint64(3000)))
+		Expect(client.RateLimitRemaining).To(Equal(uint64(2999)))
+		Expect(client.RateLimitReset).To(Equal(uint64(1)))
+	})
+
 	It("produces errors on non 2xx responses", func() {
-		httpmock.RegisterResponder(http.MethodGet, client.getEptUrl("account"),
+		httpmock.RegisterResponder(http.MethodGet, client.getEptURL("account"),
 			httpmock.NewStringResponder(http.StatusBadRequest, errorResponse))
-		req, _ := http.NewRequest(http.MethodGet, client.getEptUrl("account"), nil)
+		req, _ := http.NewRequest(http.MethodGet, client.getEptURL("account"), nil)
 		_, err := client.perform(req)
 		Expect(err).ToNot(BeNil())
 		hErr, ok := err.(APIErr)
@@ -109,9 +133,9 @@ var _ = Describe("Hellosign", func() {
 	})
 
 	It("parses responses", func() {
-		httpmock.RegisterResponder(http.MethodGet, client.getEptUrl("account"),
+		httpmock.RegisterResponder(http.MethodGet, client.getEptURL("account"),
 			httpmock.NewStringResponder(http.StatusOK, getAccountResp))
-		req, _ := http.NewRequest(http.MethodGet, client.getEptUrl("account"), nil)
+		req, _ := http.NewRequest(http.MethodGet, client.getEptURL("account"), nil)
 		resp, err := client.perform(req)
 		Expect(err).To(BeNil())
 		acc := &accRaw{}
@@ -122,7 +146,7 @@ var _ = Describe("Hellosign", func() {
 		Expect(account.EmailAddress).To(Equal("me@hellosign.com"))
 		Expect(account.IsPaidHS).To(BeTrue())
 		Expect(account.IsPaidHF).To(BeFalse())
-		Expect(*account.Quotas.ApiSignatureRequestsLeft).To(Equal(uint64(1250)))
+		Expect(*account.Quotas.APISignatureRequestsLeft).To(Equal(uint64(1250)))
 		Expect(account.Quotas.DocumentsLeft).To(BeNil())
 		Expect(account.Quotas.TemplatesLeft).To(BeNil())
 		Expect(account.CallbackURL).To(BeNil())
