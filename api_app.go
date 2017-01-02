@@ -74,7 +74,7 @@ type APIAppCreateParms struct {
 	CallbackURL          string             `form:"callback_url,omitempty"`
 	CustomLogoFile       []byte             `form:"custom_logo_file,omitempty"`
 	OAuth                *APIAppCreateOauth `form:"oauth,omitempty"`
-	WhiteLabelingOptions string             `form:"white_labeling_options,omitempty`
+	WhiteLabelingOptions string             `form:"white_labeling_options,omitempty"`
 }
 
 type APIAppCreateOauth struct {
