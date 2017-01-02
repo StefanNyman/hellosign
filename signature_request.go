@@ -226,7 +226,7 @@ type FileURL struct {
 }
 
 func (c *SignatureRequestAPI) Files(signatureRequestID, fileType string, getURL bool) ([]byte, *FileURL, error) {
-	return c.getFiles(fmt.Sprintf("signature_request/files/%", signatureRequestID), fileType, getURL)
+	return c.getFiles(fmt.Sprintf("signature_request/files/%s", signatureRequestID), fileType, getURL)
 }
 
 type SigReqEmbSendParms struct {
