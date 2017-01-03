@@ -22,21 +22,25 @@ type EmbeddedURL struct {
 	ExpiresAt uint64 `json:"expires_at"`
 }
 
+type embeddedURLRaw struct {
+	Embedded EmbeddedURL `json:"embedded"`
+}
+
 // GetSignURL retrieves an embedded object containing a signature url that can be opened in an iFrame.
 func (c *EmbeddedAPI) GetSignURL(signatureID string) (*EmbeddedURL, error) {
-	url := &EmbeddedURL{}
+	url := &embeddedURLRaw{}
 	if err := c.getAndParse(fmt.Sprintf("embedded/sign_url/%s", signatureID), nil, url); err != nil {
 		return nil, err
 	}
-	return url, nil
+	return &url.Embedded, nil
 }
 
 // GetTemplateEditURL retrieves an embedded object containing a template url that can be opened in an iFrame.
 // Note that only templates created via the embedded template process are available to be edited with this endpoint.
 func (c *EmbeddedAPI) GetTemplateEditURL(templateID string) (*EmbeddedURL, error) {
-	url := &EmbeddedURL{}
+	url := &embeddedURLRaw{}
 	if err := c.getAndParse(fmt.Sprintf("embedded/edit_url/%s", templateID), nil, url); err != nil {
 		return nil, err
 	}
-	return url, nil
+	return &url.Embedded, nil
 }
