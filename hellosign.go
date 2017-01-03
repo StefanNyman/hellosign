@@ -34,10 +34,10 @@ type ListInfo struct {
 
 // ListParms struct with options for performing list operations.
 type ListParms struct {
-	AccountID *string `form:"account_id,omitempty"`
-	Page      *uint64 `form:"page,omitempty"`
-	PageSize  *uint64 `form:"page_size,omitempty"`
-	Query     *string `form:"query,omitempty"`
+	AccountID string `form:"account_id,omitempty"`
+	Page      uint64 `form:"page,omitempty"`
+	PageSize  uint64 `form:"page_size,omitempty"`
+	Query     string `form:"query,omitempty"`
 }
 
 // FormField a field where some kind of action needs to be taken.
@@ -241,7 +241,7 @@ func (c *hellosign) getEptURL(ept string) string {
 
 func (c *hellosign) get(ept string, params *string) (*http.Response, error) {
 	url := c.getEptURL(ept)
-	if params != nil && *params == "" {
+	if params != nil && *params != "" {
 		url = fmt.Sprintf("%s?%s", url, *params)
 	}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
