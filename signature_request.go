@@ -1,4 +1,4 @@
-// Copyright 2016 Stefan Nyman.
+// Copyright 2016 Precisely AB.
 // Use of this source code is governed by the MIT
 // license that can be found in the LICENSE file.
 
@@ -20,30 +20,6 @@ type SignatureRequestAPI struct {
 // NewSignatureRequestAPI creates a new api client for signature request manipulations.
 func NewSignatureRequestAPI(apiKey string) *SignatureRequestAPI {
 	return &SignatureRequestAPI{newHellosign(apiKey)}
-}
-
-// SigReqParms base struct for signature request parameters.
-type SigReqParms struct {
-	Title        string            `form:"title,omitempty"`
-	Subject      string            `form:"subject,omitempty"`
-	Message      string            `form:"message,omitempty"`
-	Metadata     map[string]string `form:"metadata,omitempty"`
-	TestMode     int8              `form:"test_mode,omitempty"`
-	AllowDecline int8              `form:"allow_decline,omitempty"`
-}
-
-// SigReqFileParms base struct for signature request parameters for endpoints
-// that accept file data.
-type SigReqFileParms struct {
-	File                  [][]byte       `form:"file,omitempty"`
-	FileURL               []string       `form:"file_url,omitempty"`
-	FileIO                []io.Reader    `form:"-"`
-	Signers               []SigReqSigner `form:"signers"`
-	CCEmailAddresses      []string       `form:"cc_email_addresses,omitempty"`
-	ClientID              string         `form:"client_id,omitempty"`
-	FormFieldsPerDocument string         `form:"form_fields_per_documents,omitempty"`
-	UseTextTags           int8           `form:"use_text_tags,omitempty"`
-	HideTextTags          int8           `form:"hide_text_tags,omitempty"`
 }
 
 // SigReq contains information regarding documents that need to be signed.
@@ -111,14 +87,26 @@ type sigReqFileParms interface {
 	hasFile() bool
 	hasFileURL() bool
 	hasFileIO() bool
-	getFileParms() *SigReqFileParms
 }
 
 // SigReqSendParms parameters for creating a new signature request.
 type SigReqSendParms struct {
-	SigReqParms
-	SigReqFileParms
-	SigningRedirectURL string `form:"message,omitempty"`
+	Title                 string            `form:"title,omitempty"`
+	Subject               string            `form:"subject,omitempty"`
+	Message               string            `form:"message,omitempty"`
+	Metadata              map[string]string `form:"metadata,omitempty"`
+	TestMode              int8              `form:"test_mode,omitempty"`
+	AllowDecline          int8              `form:"allow_decline,omitempty"`
+	File                  [][]byte          `form:"file,omitempty"`
+	FileURL               []string          `form:"file_url,omitempty"`
+	FileIO                []io.Reader       `form:"-"`
+	Signers               []SigReqSigner    `form:"signers"`
+	CCEmailAddresses      []string          `form:"cc_email_addresses,omitempty"`
+	ClientID              string            `form:"client_id,omitempty"`
+	FormFieldsPerDocument string            `form:"form_fields_per_documents,omitempty"`
+	UseTextTags           int8              `form:"use_text_tags,omitempty"`
+	HideTextTags          int8              `form:"hide_text_tags,omitempty"`
+	SigningRedirectURL    string            `form:"message,omitempty"`
 }
 
 func (c SigReqSendParms) hasFile() bool {
@@ -133,8 +121,16 @@ func (c SigReqSendParms) hasFileIO() bool {
 	return len(c.FileIO) > 0
 }
 
-func (c SigReqSendParms) getFileParms() *SigReqFileParms {
-	return &c.SigReqFileParms
+func (c *SigReqSendParms) populateFile() bool {
+	if !c.hasFileIO() {
+		return true
+	}
+	arr, err := getFiles(c.FileIO)
+	if err != nil {
+		return false
+	}
+	c.File = *arr
+	return true
 }
 
 // SigReqSigner represents a person that should sign a document. Each signer must be unique.
@@ -145,7 +141,23 @@ type SigReqSigner struct {
 	Pin          string  `form:"pin,omitempty"`
 }
 
-func (c *SignatureRequestAPI) validateSigReqFileParms(parms sigReqFileParms) error {
+func getFiles(fileIO []io.Reader) (*[][]byte, error) {
+	fileArr := [][]byte{}
+	for _, f := range fileIO {
+		fc, err := ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+		fileArr = append(fileArr, fc)
+	}
+	return &fileArr, nil
+}
+
+func (c *SignatureRequestAPI) validateSigReqFileParms(iParms interface{}) error {
+	parms, ok := iParms.(sigReqFileParms)
+	if !ok {
+		return errors.New("invalid input to validateSigReqFileParms")
+	}
 	hasFile, hasFileURL, hasFileIO := parms.hasFile(), parms.hasFileURL(), parms.hasFileIO()
 	if !hasFile && !hasFileURL && !hasFileIO {
 		return errors.New("Specify either file, file url or file io, none given")
@@ -163,16 +175,6 @@ func (c *SignatureRequestAPI) validateSigReqFileParms(parms sigReqFileParms) err
 	if nTrue > 1 {
 		return errors.New("Specify either file, file url or file io, more than one given")
 	}
-	if hasFileIO {
-		fParms := parms.getFileParms()
-		for _, f := range fParms.FileIO {
-			fc, err := ioutil.ReadAll(f)
-			if err != nil {
-				return err
-			}
-			fParms.File = append(fParms.File, fc)
-		}
-	}
 	return nil
 }
 
@@ -180,8 +182,12 @@ func (c *SignatureRequestAPI) validateSigReqFileParms(parms sigReqFileParms) err
 // not specified, a signature page will be affixed where all signers will be required to add their signature,
 // signifying their agreement to all contained documents.
 func (c *SignatureRequestAPI) Send(parms SigReqSendParms) (*SigReq, error) {
+	if err := c.validateSigReqFileParms(parms); err != nil {
+		return nil, err
+	}
+	(&parms).populateFile()
 	sigReq := &sigReqRaw{}
-	if err := c.sendSignatureRequest("signature_request/send", parms, sigReq); err != nil {
+	if err := c.postFormAndParse("signature_request/create_embedded", parms, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil
@@ -189,7 +195,12 @@ func (c *SignatureRequestAPI) Send(parms SigReqSendParms) (*SigReq, error) {
 
 // SigReqSendTplParms parameters for creating a signature request from a template.
 type SigReqSendTplParms struct {
-	SigReqParms
+	Title              string                              `form:"title,omitempty"`
+	Subject            string                              `form:"subject,omitempty"`
+	Message            string                              `form:"message,omitempty"`
+	Metadata           map[string]string                   `form:"metadata,omitempty"`
+	TestMode           int8                                `form:"test_mode,omitempty"`
+	AllowDecline       int8                                `form:"allow_decline,omitempty"`
 	TemplateID         string                              `form:"template_id,omitempty"`
 	TemplateIds        []string                            `form:"template_ids,omitempty"`
 	SigningRedirectURL string                              `form:"signing_redirect_url,omitempty"`
@@ -284,8 +295,21 @@ func (c *SignatureRequestAPI) Files(signatureRequestID, fileType string, getURL 
 
 // SigReqEmbSendParms parameters for creating an embedded signature request.
 type SigReqEmbSendParms struct {
-	SigReqParms
-	SigReqFileParms
+	Title                 string            `form:"title,omitempty"`
+	Subject               string            `form:"subject,omitempty"`
+	Message               string            `form:"message,omitempty"`
+	Metadata              map[string]string `form:"metadata,omitempty"`
+	TestMode              int8              `form:"test_mode,omitempty"`
+	AllowDecline          int8              `form:"allow_decline,omitempty"`
+	File                  [][]byte          `form:"file,omitempty"`
+	FileURL               []string          `form:"file_url,omitempty"`
+	FileIO                []io.Reader       `form:"-"`
+	Signers               []SigReqSigner    `form:"signers"`
+	CCEmailAddresses      []string          `form:"cc_email_addresses,omitempty"`
+	ClientID              string            `form:"client_id,omitempty"`
+	FormFieldsPerDocument string            `form:"form_fields_per_documents,omitempty"`
+	UseTextTags           int8              `form:"use_text_tags,omitempty"`
+	HideTextTags          int8              `form:"hide_text_tags,omitempty"`
 }
 
 func (c SigReqEmbSendParms) hasFile() bool {
@@ -300,8 +324,16 @@ func (c SigReqEmbSendParms) hasFileIO() bool {
 	return len(c.FileIO) > 0
 }
 
-func (c SigReqEmbSendParms) getFileParms() *SigReqFileParms {
-	return &c.SigReqFileParms
+func (c *SigReqEmbSendParms) populateFile() bool {
+	if !c.hasFileIO() {
+		return true
+	}
+	arr, err := getFiles(c.FileIO)
+	if err != nil {
+		return false
+	}
+	c.File = *arr
+	return true
 }
 
 func (c *SignatureRequestAPI) sendSignatureRequest(ept string, parms, out interface{}) error {
@@ -309,10 +341,14 @@ func (c *SignatureRequestAPI) sendSignatureRequest(ept string, parms, out interf
 	if !ok {
 		return errors.New("invalid signature request params")
 	}
-	if err := c.validateSigReqFileParms(fParms); err != nil {
+	err := c.validateSigReqFileParms(fParms)
+	if err != nil {
 		return err
 	}
-	if err := c.postFormAndParse(ept, parms, out); err != nil {
+	//fParms.populateFile()
+	fmt.Println(parms)
+	fmt.Println(fParms)
+	if err := c.postFormAndParse(ept, fParms, out); err != nil {
 		return err
 	}
 	return nil
@@ -323,8 +359,12 @@ func (c *SignatureRequestAPI) sendSignatureRequest(ept string, parms, out interf
 // add their signature, signifying their agreement to all contained documents. Note that embedded signature requests
 // can only be signed in embedded iFrames whereas normal signature requests can only be signed on HelloSign.
 func (c *SignatureRequestAPI) SendEmbedded(parms SigReqEmbSendParms) (*SigReq, error) {
+	if err := c.validateSigReqFileParms(parms); err != nil {
+		return nil, err
+	}
+	(&parms).populateFile()
 	sigReq := &sigReqRaw{}
-	if err := c.sendSignatureRequest("signature_request/create_embedded", parms, sigReq); err != nil {
+	if err := c.postFormAndParse("signature_request/create_embedded", parms, sigReq); err != nil {
 		return nil, err
 	}
 	return &sigReq.SigReq, nil

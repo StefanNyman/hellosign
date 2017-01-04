@@ -1,4 +1,4 @@
-// Copyright 2016 Stefan Nyman.
+// Copyright 2016 Precisely AB.
 // Use of this source code is governed by the MIT
 // license that can be found in the LICENSE file.
 
@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
-	"strings"
 
 	"github.com/ajg/form"
 )
@@ -95,9 +95,17 @@ func newHellosign(apiKey string) *hellosign {
 	}
 }
 
+func DumpRequest(req *http.Request) {
+	d, err := httputil.DumpRequest(req, true)
+	if err == nil {
+		fmt.Println(string(d))
+	}
+}
+
 func (c *hellosign) perform(req *http.Request) (*http.Response, error) {
 	req.Header.Add("accept", "application/json")
 	req.SetBasicAuth(c.apiKey, "")
+	//DumpRequest(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -185,19 +193,16 @@ func (c *hellosign) parseResponse(resp *http.Response, dst interface{}) error {
 }
 
 func (c *hellosign) postForm(ept string, o interface{}) (*http.Response, error) {
-	v := ""
-	if o != nil {
-		encoded, err := form.EncodeToString(o)
-		if err != nil {
-			return nil, err
-		}
-		v = encoded
-	}
-	req, err := http.NewRequest(http.MethodPost, c.getEptURL(ept), strings.NewReader(v))
+	b, w, err := c.marshalMultipart(o)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(contentType, "application/x-www-form-urlencoded")
+	req, err := http.NewRequest(http.MethodPost, c.getEptURL(ept), b)
+	if err != nil {
+		return nil, err
+	}
+	//req.Header.Add(contentType, "application/x-www-form-urlencoded")
+	req.Header.Add(contentType, w.FormDataContentType())
 	return c.perform(req)
 }
 
@@ -228,6 +233,14 @@ func (c *hellosign) delete(ept string) (*http.Response, error) {
 		return nil, err
 	}
 	return c.perform(req)
+}
+
+// BoolToInt converts a boolean value to a value appropriate for api interaction.
+func BoolToInt(v bool) int8 {
+	if !v {
+		return int8(0)
+	}
+	return int8(1)
 }
 
 // GetEptURL returns the full HelloSign api url for a given endpoint.
