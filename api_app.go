@@ -1,4 +1,4 @@
-// Copyright 2016 Stefan Nyman.
+// Copyright 2016 Precisely AB.
 // Use of this source code is governed by the MIT
 // license that can be found in the LICENSE file.
 
@@ -7,7 +7,6 @@ package hellosign
 import (
 	"errors"
 	"fmt"
-
 	"net/http"
 )
 
