@@ -3,11 +3,11 @@ package hellosign_test
 import (
 	"errors"
 	"hellosign"
-	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"gopkg.in/jarcoal/httpmock.v1"
+
+	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -96,14 +96,13 @@ var _ = Describe("Account", func() {
 })
 
 func mockResponseCreateVerify(req *http.Request) (*http.Response, error) {
-	b, _ := ioutil.ReadAll(req.Body)
-	vals, err := url.ParseQuery(string(b))
+	params, err := parseRequestParameters(req)
 	if err != nil {
 		return nil, err
 	}
-	emailAddress, found := vals["email_address"]
+	emailAddress, found := params["email_address"]
 	if !found {
-		return nil, errors.New("email_address not found in values")
+		return nil, fmt.Errorf("email_address not found in values")
 	}
 	return httpmock.NewJsonResponse(http.StatusOK, &struct {
 		Account struct {
@@ -113,22 +112,21 @@ func mockResponseCreateVerify(req *http.Request) (*http.Response, error) {
 		Account: struct {
 			EmailAddress string `json:"email_address"`
 		}{
-			EmailAddress: emailAddress[0],
+			EmailAddress: emailAddress,
 		},
 	})
 }
 
 func mockResponseUpdate(req *http.Request) (*http.Response, error) {
-	b, _ := ioutil.ReadAll(req.Body)
-	vals, err := url.ParseQuery(string(b))
+	params, err := parseRequestParameters(req)
 	if err != nil {
 		return nil, err
 	}
-	cbURLArr, found := vals["callback_url"]
+	cbURLArr, found := params["callback_url"]
 	if !found {
 		return nil, errors.New("callback_url not found in values")
 	}
-	Expect(cbURLArr[0]).To(Equal(callbackURL))
+	Expect(cbURLArr).To(Equal(callbackURL))
 	// this is not very nice... need better abstraction
 	return httpmock.NewJsonResponse(http.StatusOK, &struct {
 		Account struct {
@@ -138,7 +136,7 @@ func mockResponseUpdate(req *http.Request) (*http.Response, error) {
 		Account: struct {
 			CallbackURL string `json:"callback_url"`
 		}{
-			CallbackURL: cbURLArr[0],
+			CallbackURL: cbURLArr,
 		},
 	})
 }
