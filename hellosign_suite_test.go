@@ -1,7 +1,12 @@
 package hellosign_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -51,4 +56,36 @@ var _ = AfterSuite(func() {
 func TestHellosign(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Hellosign Suite")
+}
+
+func parseRequestParameters(req *http.Request) (map[string]string, error) {
+	var params map[string]string
+	mediaType, params, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
+	if err != nil {
+		return params, err
+	}
+	if !strings.HasPrefix(mediaType, "multipart/") {
+		return params, fmt.Errorf("invalid media type")
+	}
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return params, err
+	}
+	mr := multipart.NewReader(bytes.NewReader(body), params["boundary"])
+	for {
+		p, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return params, err
+		}
+		key := p.FormName()
+		b, err := ioutil.ReadAll(p)
+		if err != nil {
+			return params, err
+		}
+		params[key] = string(b)
+	}
+	return params, nil
 }
