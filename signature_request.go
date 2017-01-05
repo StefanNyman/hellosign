@@ -336,24 +336,6 @@ func (c *SigReqEmbSendParms) populateFile() bool {
 	return true
 }
 
-func (c *SignatureRequestAPI) sendSignatureRequest(ept string, parms, out interface{}) error {
-	fParms, ok := parms.(sigReqFileParms)
-	if !ok {
-		return errors.New("invalid signature request params")
-	}
-	err := c.validateSigReqFileParms(fParms)
-	if err != nil {
-		return err
-	}
-	//fParms.populateFile()
-	fmt.Println(parms)
-	fmt.Println(fParms)
-	if err := c.postFormAndParse(ept, fParms, out); err != nil {
-		return err
-	}
-	return nil
-}
-
 // SendEmbedded creates a new SignatureRequest with the submitted documents to be signed in an embedded iFrame.
 // If FormFieldsPerDocument is not specified, a signature page will be affixed where all signers will be required to
 // add their signature, signifying their agreement to all contained documents. Note that embedded signature requests
