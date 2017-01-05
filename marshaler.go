@@ -35,6 +35,7 @@ func (c *hellosign) marshalMultipart(obj interface{}) (*bytes.Buffer, *multipart
 	if err := marshalObj(w, "", obj); err != nil {
 		return nil, nil, err
 	}
+	w.Close()
 	return &b, w, nil
 }
 
