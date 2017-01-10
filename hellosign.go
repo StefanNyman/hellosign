@@ -13,6 +13,8 @@ import (
 	"net/http/httputil"
 	"strconv"
 
+	"io"
+
 	"github.com/ajg/form"
 )
 
@@ -192,18 +194,27 @@ func (c *hellosign) parseResponse(resp *http.Response, dst interface{}) error {
 	return errors.New("Status code invalid")
 }
 
+func (c *hellosign) post(ept string, headers *map[string]string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, c.getEptURL(ept), body)
+	if err != nil {
+		return nil, err
+	}
+	if headers != nil {
+		for k, v := range *headers {
+			req.Header.Add(k, v)
+		}
+	}
+	return c.perform(req)
+}
+
 func (c *hellosign) postForm(ept string, o interface{}) (*http.Response, error) {
 	b, w, err := c.marshalMultipart(o)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest(http.MethodPost, c.getEptURL(ept), b)
-	if err != nil {
-		return nil, err
-	}
-	//req.Header.Add(contentType, "application/x-www-form-urlencoded")
-	req.Header.Add(contentType, w.FormDataContentType())
-	return c.perform(req)
+	return c.post(ept, &map[string]string{
+		contentType: w.FormDataContentType(),
+	}, b)
 }
 
 func (c *hellosign) postFormAndParse(ept string, inp, dst interface{}) (err error) {
@@ -216,7 +227,7 @@ func (c *hellosign) postFormAndParse(ept string, inp, dst interface{}) (err erro
 }
 
 func (c *hellosign) postEmptyExpect(ept string, expected int) (ok bool, err error) {
-	resp, err := c.postForm(ept, nil)
+	resp, err := c.post(ept, nil, nil)
 	if err != nil {
 		return false, err
 	}
