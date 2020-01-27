@@ -2,13 +2,11 @@ package hellosign_test
 
 import (
 	"errors"
-	"hellosign"
+	"fmt"
 	"net/http"
 
-	"gopkg.in/jarcoal/httpmock.v1"
-
-	"fmt"
-
+	"github.com/StefanNyman/hellosign"
+	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/jarcoal/httpmock.v1"
 )
 
 func dumpRequest(req *http.Request) {

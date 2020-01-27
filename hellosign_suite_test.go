@@ -10,13 +10,12 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"testing"
 	"unicode"
 
+	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/jarcoal/httpmock.v1"
-
-	"testing"
 )
 
 func DumpRequest(req *http.Request) {
